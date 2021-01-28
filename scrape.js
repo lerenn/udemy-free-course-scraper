@@ -26,6 +26,7 @@ async function getLinks(browser) {
         }
     }
 
+    page.close();
     return links
 }
 
@@ -70,11 +71,13 @@ async function getCourse(browser, link) {
         const value =  await page.$eval('div.price-text--price-part--Tu6MH.udlite-clp-discount-price.udlite-heading-xxl > span:nth-child(2)',
             el => el.innerText);
         if (value != "Free" && value != "Gratuit") {
-            console.log("course %s is not free (%s)", link, value);
+            console.log("course is not free (%s): %s", value, link);
+            page.close();
             return;
         }
     } catch {
-        console.log("Unable to find add cart button. The course must be already bought.");
+        console.log("Unable to find add cart button. The course must be already bought: %s", link);
+        page.close();
         return;
     }
 
@@ -84,7 +87,8 @@ async function getCourse(browser, link) {
     try {
         button = await page.waitForSelector(selector, { visibility: true});
     } catch {
-        console.log("Cannot add to cart course %s", link);
+        console.log("Cannot add to cart: %s", link);
+        page.close();
         return;
     }
     await button.click();
@@ -102,7 +106,8 @@ async function getCourse(browser, link) {
     try {
         button = await page.waitForSelector(selector, { visibility: true});
     } catch {
-        console.log("Cannot validate cart on course %s", link);
+        console.log("Cannot validate cart: %s", link);
+        page.close();
         return;
     }
     await button.click();
@@ -115,7 +120,8 @@ async function getCourse(browser, link) {
     try {
         button = await page.waitForSelector(selector, { visibility: true});
     } catch {
-        console.log("Cannot enroll on course %s", link);
+        console.log("Cannot enroll: %s", link);
+        page.close();
         return;
     }
     await button.click();
@@ -149,7 +155,8 @@ async function main() {
         await getCourse(browser, link);
     }
 
-    // browser.close();
+    console.log("All links have been analysed.");
+    browser.close();
 }
 
 main();
