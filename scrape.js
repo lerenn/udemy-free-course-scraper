@@ -1,10 +1,15 @@
 const puppeteer = require('puppeteer');
 const readline = require('readline');
 
-const dealabs_page = "https://www.dealabs.com/bons-plans/selection-de-cours-en-ligne-gratuits-dematerialises-en-anglais-ex-the-complete-android-ethical-hacking-practical-course-caehp-2087273"
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+var args = process.argv.slice(2);
+const dealabs_page = args[0];
+const email = args[1];
+const password = args[2];
+
 const width = 1000;
 const height = 800;
-const email = "louis.fradin@gmail.com";
 
 async function getLinks(browser) {
     const page = await browser.newPage();
@@ -41,11 +46,18 @@ async function connect(browser) {
     await page.setViewport({width: width, height: height});  
     await page.goto('https://www.udemy.com/join/login-popup/', {waitUntil: 'networkidle2'});
 
+    // Add credentials
     await page.$eval('#email--1',
-        el => el.value = "louis.fradin@gmail.com");
-        // el => el.value = "oceane.guerecheau@gmail.com");
+        (el, value) => el.value = value, email);
+    await page.$eval('#id_password',
+        (el, value) => el.value = value, password);
 
-    await askQuestion("Press enter when you have successfully logged in.");
+    // Login
+    button = await page.waitForSelector('#submit-id-submit', { visibility: true});
+    await button.click();
+    page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+    await delay(5000);
 }
 
 async function getCourse(browser, link) {
@@ -57,8 +69,8 @@ async function getCourse(browser, link) {
     try {
         const value =  await page.$eval('div.price-text--price-part--Tu6MH.udlite-clp-discount-price.udlite-heading-xxl > span:nth-child(2)',
             el => el.innerText);
-        if (value != "FREE" && value != "Gratuit") {
-            console.log("course %s is not free", link);
+        if (value != "Free" && value != "Gratuit") {
+            console.log("course %s is not free (%s)", link, value);
             return;
         }
     } catch {
@@ -67,27 +79,58 @@ async function getCourse(browser, link) {
     }
 
     // Add to cart
-    button = await page.waitForSelector('div.buy-box--buy-box-item--1Qbkl.buy-box--add-to-cart-button--u5kCJ > div > button', { visibility: true});
+    // selector = '#udemy > div.main-content-wrapper > div.main-content > div.paid-course-landing-page__container > div.top-container.dark-background > div > div > div.course-landing-page__main-content.course-landing-page__purchase-section__main.dark-background-inner-text-container > div > div > div > div > div.generic-purchase-section--buy-box-main--siIXV > div > div.buy-box--buy-box-item--1Qbkl.buy-box--add-to-cart-button--u5kCJ > div > button';
+    selector = 'div.main-content-wrapper > div.main-content > div.paid-course-landing-page__container > div.top-container.dark-background > div > div > div.course-landing-page__main-content.course-landing-page__purchase-section__main.dark-background-inner-text-container > div > div > div > div > div.generic-purchase-section--buy-box-main--siIXV > div > div.buy-box--buy-box-item--1Qbkl.buy-box--add-to-cart-button--u5kCJ > div > button';
+    try {
+        button = await page.waitForSelector(selector, { visibility: true});
+    } catch {
+        console.log("Cannot add to cart course %s", link);
+        return;
+    }
     await button.click();
-    page.waitForNavigation({ waitUntil: 'networkidle0' });
+    page.waitForNavigation({ waitUntil: 'networkidle2' });
+    
+    // Wait to be sure that the coupon has been applied
+    await delay(5000);
 
     // Go to cart
-    button = await page.waitForSelector('div.styles--course-added--aJk4C > div.styles--added-context--1Xdgf > button', { visible: true });
-    await button.click();
-    page.waitForNavigation({ waitUntil: 'networkidle0' });
+    await page.goto('https://www.udemy.com/cart/', {waitUntil: 'networkidle2'});
 
     // Validate cart
-    button = await page.waitForSelector('div.styles--sc-checkout-pane--71SP_.styles--sc-checkout-pane--vertical--1Z5xx > div:nth-child(3) > button', { visible: true });
+    // selector = '#udemy > div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--1aPCP > div.styles--sc-checkout-pane--71SP_.styles--sc-checkout-pane--vertical--1Z5xx > div:nth-child(3) > button';
+    selector = 'div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--1aPCP > div.styles--sc-checkout-pane--71SP_.styles--sc-checkout-pane--vertical--1Z5xx > div:nth-child(3) > button';
+    try {
+        button = await page.waitForSelector(selector, { visibility: true});
+    } catch {
+        console.log("Cannot validate cart on course %s", link);
+        return;
+    }
     await button.click();
-    page.waitForNavigation({ waitUntil: 'networkidle0' });
+    page.waitForNavigation({ waitUntil: 'networkidle2' });
 
     // Enroll
-    button = await page.waitForSelector('div.styles--button-slider--2IGed.styles--checkout-slider--1ry4z > button', { visible: true });
+    await delay(5000); // Wait for button to be ready (unknown readon)
+    // selector = '#udemy > div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--A136v > form > div.styles--checkout-pane-outer--1syWc > div > div.styles--button-slider--2IGed.styles--checkout-slider--1ry4z > button';
+    selector = 'div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--A136v > form > div.styles--checkout-pane-outer--1syWc > div > div.styles--button-slider--2IGed.styles--checkout-slider--1ry4z > button';
+    try {
+        button = await page.waitForSelector(selector, { visibility: true});
+    } catch {
+        console.log("Cannot enroll on course %s", link);
+        return;
+    }
     await button.click();
-    page.waitForNavigation({ waitUntil: 'networkidle0' });
+    page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+    console.log("Done for %s", link);
+    await delay(10000); // Watch the result page before closing
+    page.close();
 }
 
 async function main() {
+    console.log(dealabs_page);
+    console.log("It will use these credentials: %s (%s)", email, password);
+    await askQuestion("Press enter if it's ok, Ctrl-C otherwise.");
+
     const browser = await puppeteer.launch({
         defaultViewport: null,
         headless: false, // The browser is visible
@@ -102,7 +145,6 @@ async function main() {
     var links = await getLinks(browser);
 
     // Get free courses
-    // getCourse(browser, "https://www.udemy.com/course/startup-fast-track-confident-launch-in-90-days-or-less/?couponCode=JAN2021");
     for (let link of links) {
         await getCourse(browser, link);
     }
