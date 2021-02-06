@@ -11,8 +11,7 @@ const password = args[2];
 const width = 1000;
 const height = 800;
 
-async function getLinks(browser) {
-    const page = await browser.newPage();
+async function getLinks(page) {
     await page.setViewport({width: width, height: height});    
     await page.goto(dealabs_page, {waitUntil: 'networkidle2'});
     
@@ -26,7 +25,6 @@ async function getLinks(browser) {
         }
     }
 
-    page.close();
     return links
 }
 
@@ -42,8 +40,7 @@ function askQuestion(query) {
     }))
 }
 
-async function connect(browser) {
-    const page = (await browser.pages())[0];
+async function connect(page) {
     await page.setViewport({width: width, height: height});  
     await page.goto('https://www.udemy.com/join/login-popup/', {waitUntil: 'networkidle2'});
 
@@ -61,8 +58,7 @@ async function connect(browser) {
     await delay(5000);
 }
 
-async function getCourse(browser, link) {
-    const page = await browser.newPage();
+async function getCourse(page, link) {
     await page.setViewport({width: width, height: height});  
     await page.goto(link, {waitUntil: 'networkidle2'});
 
@@ -72,12 +68,10 @@ async function getCourse(browser, link) {
             el => el.innerText);
         if (value != "Free" && value != "Gratuit") {
             console.log("course is not free (%s): %s", value, link);
-            page.close();
             return;
         }
     } catch {
         console.log("Unable to find add cart button. The course must be already bought: %s", link);
-        page.close();
         return;
     }
 
@@ -88,7 +82,6 @@ async function getCourse(browser, link) {
         button = await page.waitForSelector(selector, { visibility: true});
     } catch {
         console.log("Cannot add to cart: %s", link);
-        page.close();
         return;
     }
     await button.click();
@@ -107,7 +100,6 @@ async function getCourse(browser, link) {
         button = await page.waitForSelector(selector, { visibility: true});
     } catch {
         console.log("Cannot validate cart: %s", link);
-        page.close();
         return;
     }
     await button.click();
@@ -121,7 +113,6 @@ async function getCourse(browser, link) {
         button = await page.waitForSelector(selector, { visibility: true});
     } catch {
         console.log("Cannot enroll: %s", link);
-        page.close();
         return;
     }
     await button.click();
@@ -129,7 +120,6 @@ async function getCourse(browser, link) {
 
     console.log("Done for %s", link);
     await delay(10000); // Watch the result page before closing
-    page.close();
 }
 
 async function main() {
@@ -137,22 +127,24 @@ async function main() {
     console.log("It will use these credentials: %s (%s)", email, password);
     await askQuestion("Press enter if it's ok, Ctrl-C otherwise.");
 
+    // Create a browser and welcome page
     const browser = await puppeteer.launch({
         defaultViewport: null,
         headless: false, // The browser is visible
         ignoreHTTPSErrors: true,
         args: [`--window-size=${width},${height}`] // new option
     });
+    const page = (await browser.pages())[0];
 
     // Connect to udemy
-    await connect(browser);
+    await connect(page);
 
     // Get link
-    var links = await getLinks(browser);
+    var links = await getLinks(page);
 
     // Get free courses
     for (let link of links) {
-        await getCourse(browser, link);
+        await getCourse(page, link);
     }
 
     console.log("All links have been analysed.");
