@@ -76,15 +76,14 @@ async function getCourse(page, link) {
     }
 
     // Add to cart
-    // selector = '#udemy > div.main-content-wrapper > div.main-content > div.paid-course-landing-page__container > div.top-container.dark-background > div > div > div.course-landing-page__main-content.course-landing-page__purchase-section__main.dark-background-inner-text-container > div > div > div > div > div.generic-purchase-section--buy-box-main--siIXV > div > div.buy-box--buy-box-item--1Qbkl.buy-box--add-to-cart-button--u5kCJ > div > button';
-    selector = 'div.main-content-wrapper > div.main-content > div.paid-course-landing-page__container > div.top-container.dark-background > div > div > div.course-landing-page__main-content.course-landing-page__purchase-section__main.dark-background-inner-text-container > div > div > div > div > div.generic-purchase-section--buy-box-main--siIXV > div > div.buy-box--buy-box-item--1Qbkl.buy-box--add-to-cart-button--u5kCJ > div > button';
     try {
-        button = await page.waitForSelector(selector, { visibility: true});
+        await page.evaluate(() => {
+            document.querySelector('button.add-to-cart').click();
+        });
     } catch {
         console.log("Cannot add to cart: %s", link);
         return;
     }
-    await button.click();
     page.waitForNavigation({ waitUntil: 'networkidle2' });
     
     // Wait to be sure that the coupon has been applied
@@ -94,32 +93,30 @@ async function getCourse(page, link) {
     await page.goto('https://www.udemy.com/cart/', {waitUntil: 'networkidle2'});
 
     // Validate cart
-    // selector = '#udemy > div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--1aPCP > div.styles--sc-checkout-pane--71SP_.styles--sc-checkout-pane--vertical--1Z5xx > div:nth-child(3) > button';
-    selector = 'div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--1aPCP > div.styles--sc-checkout-pane--71SP_.styles--sc-checkout-pane--vertical--1Z5xx > div:nth-child(3) > button';
     try {
-        button = await page.waitForSelector(selector, { visibility: true});
+        await page.evaluate(() => {
+            document.querySelector("button[data-purpose=\"shopping-cart-checkout\"]").click();
+        });
     } catch {
         console.log("Cannot validate cart: %s", link);
         return;
     }
-    await button.click();
     page.waitForNavigation({ waitUntil: 'networkidle2' });
 
     // Enroll
-    await delay(5000); // Wait for button to be ready (unknown readon)
-    // selector = '#udemy > div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--A136v > form > div.styles--checkout-pane-outer--1syWc > div > div.styles--button-slider--2IGed.styles--checkout-slider--1ry4z > button';
-    selector = 'div.main-content-wrapper > div.main-content > div > div > div > div.container.styles--shopping-container--A136v > form > div.styles--checkout-pane-outer--1syWc > div > div.styles--button-slider--2IGed.styles--checkout-slider--1ry4z > button';
+    await delay(3000); // Wait for button to be ready (unknown readon)
     try {
-        button = await page.waitForSelector(selector, { visibility: true});
+        await page.evaluate(() => {
+            document.querySelector("button[type=\"submit\"]").click();
+        });
     } catch {
         console.log("Cannot enroll: %s", link);
         return;
     }
-    await button.click();
     page.waitForNavigation({ waitUntil: 'networkidle2' });
 
     console.log("Done for %s", link);
-    await delay(10000); // Watch the result page before closing
+    await delay(5000); // Watch the result page before closing
 }
 
 async function main() {
