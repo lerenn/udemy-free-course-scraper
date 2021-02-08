@@ -88,35 +88,6 @@ async function getCourse(page, link) {
     
     // Wait to be sure that the coupon has been applied
     await delay(5000);
-
-    // Go to cart
-    await page.goto('https://www.udemy.com/cart/', {waitUntil: 'networkidle2'});
-
-    // Validate cart
-    try {
-        await page.evaluate(() => {
-            document.querySelector("button[data-purpose=\"shopping-cart-checkout\"]").click();
-        });
-    } catch {
-        console.log("Cannot validate cart: %s", link);
-        return;
-    }
-    page.waitForNavigation({ waitUntil: 'networkidle2' });
-
-    // Enroll
-    await delay(3000); // Wait for button to be ready (unknown readon)
-    try {
-        await page.evaluate(() => {
-            document.querySelector("button[type=\"submit\"]").click();
-        });
-    } catch {
-        console.log("Cannot enroll: %s", link);
-        return;
-    }
-    page.waitForNavigation({ waitUntil: 'networkidle2' });
-
-    console.log("Done for %s", link);
-    await delay(5000); // Watch the result page before closing
 }
 
 async function main() {
