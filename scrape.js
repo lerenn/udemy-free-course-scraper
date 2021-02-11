@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer'); 
 const readline = require('readline');
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
@@ -7,9 +7,11 @@ var args = process.argv.slice(2);
 const dealabs_page = args[0];
 const email = args[1];
 const password = args[2];
+const wsChromeEndpointurl = args[3];
 
 const width = 1000;
 const height = 800;
+const pageDisplayDelay = 3000;
 
 async function getLinks(page) {
     await page.setViewport({width: width, height: height});    
@@ -26,36 +28,6 @@ async function getLinks(page) {
     }
 
     return links
-}
-
-function askQuestion(query) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    return new Promise(resolve => rl.question(query, ans => {
-        rl.close();
-        resolve(ans);
-    }))
-}
-
-async function connect(page) {
-    await page.setViewport({width: width, height: height});  
-    await page.goto('https://www.udemy.com/join/login-popup/', {waitUntil: 'networkidle2'});
-
-    // Add credentials
-    await page.$eval('#email--1',
-        (el, value) => el.value = value, email);
-    await page.$eval('#id_password',
-        (el, value) => el.value = value, password);
-
-    // Login
-    button = await page.waitForSelector('#submit-id-submit', { visibility: true});
-    await button.click();
-    page.waitForNavigation({ waitUntil: 'networkidle2' });
-
-    await delay(5000);
 }
 
 async function getCourse(page, link) {
@@ -87,25 +59,58 @@ async function getCourse(page, link) {
     page.waitForNavigation({ waitUntil: 'networkidle2' });
     
     // Wait to be sure that the coupon has been applied
-    await delay(5000);
+    await delay(pageDisplayDelay);
+
+    // Go to cart
+    await page.goto('https://www.udemy.com/cart/checkout', {waitUntil: 'networkidle2'});
+
+    // Validate cart
+    try {
+        await page.evaluate(() => {
+            document.querySelector("button[data-purpose=\"shopping-cart-checkout\"]").click();
+        });
+    } catch {
+        console.log("Cannot validate cart: %s", link);
+        return;
+    }
+    page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+    // Wait for button to be ready (unknown reason)
+    await delay(pageDisplayDelay); 
+
+    // Be sure that the cart is free 
+    try {
+        const value =  await page.$eval('p.mb-space-sm',
+            el => el.innerText);
+        if (value != "Your cart is free!") {
+            console.log("Error: cart is not free (%s): %s", value, link);
+            return;
+        }
+    } catch {
+        console.log("Error when checking that the cart is free: %s", link);
+        return;
+    }
+
+    // Enroll
+    try {
+        await page.evaluate(() => {
+            document.querySelector(".styles--checkout-pane-outer--1syWc > div:nth-child(1) > div:nth-child(4) > button:nth-child(2)").click();
+        });
+    } catch {
+        console.log("Cannot enroll: %s", link);
+        return;
+    }
+    page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+    console.log("Done for %s", link);
 }
 
 async function main() {
-    console.log(dealabs_page);
-    console.log("It will use these credentials: %s (%s)", email, password);
-    await askQuestion("Press enter if it's ok, Ctrl-C otherwise.");
-
-    // Create a browser and welcome page
-    const browser = await puppeteer.launch({
-        defaultViewport: null,
-        headless: false, // The browser is visible
-        ignoreHTTPSErrors: true,
-        args: [`--window-size=${width},${height}`] // new option
+    // Get existing browser
+    const browser = await puppeteer.connect({
+        browserWSEndpoint: wsChromeEndpointurl,
     });
     const page = (await browser.pages())[0];
-
-    // Connect to udemy
-    await connect(page);
 
     // Get link
     var links = await getLinks(page);
