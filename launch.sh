@@ -8,7 +8,7 @@ chromium-browser                    \
     &> ./chromium.log              \
     &
 
-sleep 1
+sleep 5
 
 # Get debug websocket
 LINE=$(grep "^DevTools" ./chromium.log)

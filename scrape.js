@@ -22,7 +22,7 @@ async function getLinks(page) {
     const elements = await page.$$("a");
     for (let element of elements) {
         const title = await page.evaluate(e => e.getAttribute("title"), element);
-        if (title != null && title.includes('udemy.com') && title.includes('couponCode')) {
+        if (title != null && (title.includes('udemy.com') || title.includes('chollometro.com'))) {
             links.push(title);
         }
     }
@@ -32,7 +32,10 @@ async function getLinks(page) {
 
 async function getCourse(page, link) {
     await page.setViewport({width: width, height: height});  
-    await page.goto(link, {waitUntil: 'networkidle2'});
+    await page.goto(link, {waitUntil: 'networkidle2'}).catch(function () {
+        console.log("The page must has been redirected");
+   });
+   ;
 
     // Check if Free
     try {
